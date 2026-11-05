@@ -1,0 +1,223 @@
+{
+  "decay": {
+    "half_life_d": 6.6443,
+    "energy_per_decay_keV": {
+      "beta": 133.64,
+      "electron_lines": 13.8,
+      "photons": 38.39
+    },
+    "beta_mean_from_spectrum_keV": 132.63,
+    "beta_mean_from_branches_keV": 133.64
+  },
+  "T4.2_photon_af": {
+    "water, embedded": {
+      "rows": 112,
+      "pass": 59,
+      "ratio_median": 1.057,
+      "ratio_min": 1.004,
+      "ratio_max": 1.16,
+      "pass_by_energy_keV": {
+        "20": "8/10",
+        "30": "1/10",
+        "40": "0/20",
+        "60": "4/18",
+        "80": "9/17",
+        "100": "18/18",
+        "140": "9/9",
+        "160": "10/10"
+      }
+    },
+    "water, isolated": {
+      "rows": 112,
+      "pass": 60,
+      "ratio_median": 0.942,
+      "ratio_min": 0.809,
+      "ratio_max": 1.075,
+      "pass_by_energy_keV": {
+        "20": "10/10",
+        "30": "10/10",
+        "40": "19/20",
+        "60": "8/18",
+        "80": "5/17",
+        "100": "3/18",
+        "140": "5/9",
+        "160": "0/10"
+      }
+    },
+    "tissue, embedded": {
+      "rows": 112,
+      "pass": 104,
+      "ratio_median": 1.03,
+      "ratio_min": 0.976,
+      "ratio_max": 1.095,
+      "pass_by_energy_keV": {
+        "20": "10/10",
+        "30": "6/10",
+        "40": "16/20",
+        "60": "18/18",
+        "80": "17/17",
+        "100": "18/18",
+        "140": "9/9",
+        "160": "10/10"
+      }
+    }
+  },
+  "T4.4_csda_lower_bound": {
+    "rows": 95,
+    "bound_holds": 95
+  },
+  "lu177_sphere_s_values": [
+    {
+      "mass_g": 0.01,
+      "radius_cm": 0.1337,
+      "photon_af": 0.0093,
+      "photon_af_se": 5e-05,
+      "electron_af_effective": 0.8488,
+      "S_total_Gy_per_Bq_s": 2.0108959918943866e-09,
+      "S_electrons": 2.0051685222403038e-09,
+      "S_photons": 5.727469654082848e-12,
+      "S_total_bounds_low_energy_electrons": [
+        2.0049444341230412e-09,
+        2.0199799537374707e-09
+      ],
+      "S_total_mGy_per_MBq_s": 2.0108959918943867,
+      "photon_share": 0.002848217748292005
+    },
+    {
+      "mass_g": 0.1,
+      "radius_cm": 0.2879,
+      "photon_af": 0.016,
+      "photon_af_se": 7e-05,
+      "electron_af_effective": 0.9254,
+      "S_total_Gy_per_Bq_s": 2.1959567382535745e-10,
+      "S_electrons": 2.1861287266779352e-10,
+      "S_photons": 9.828011575639623e-13,
+      "S_total_bounds_low_energy_electrons": [
+        2.1931375793092528e-10,
+        2.200259667547667e-10
+      ],
+      "S_total_mGy_per_MBq_s": 0.21959567382535747,
+      "photon_share": 0.0044755032758321805
+    },
+    {
+      "mass_g": 1.0,
+      "radius_cm": 0.6204,
+      "photon_af": 0.026,
+      "photon_af_se": 0.0001,
+      "electron_af_effective": 0.9617,
+      "S_total_Gy_per_Bq_s": 2.2877831577559612e-11,
+      "S_electrons": 2.2717969186611462e-11,
+      "S_photons": 1.5986239094815345e-13,
+      "S_total_bounds_low_energy_electrons": [
+        2.2865301982251518e-11,
+        2.2896955707755584e-11
+      ],
+      "S_total_mGy_per_MBq_s": 0.022877831577559612,
+      "photon_share": 0.006987654857331808
+    },
+    {
+      "mass_g": 10.0,
+      "radius_cm": 1.3365,
+      "photon_af": 0.0452,
+      "photon_af_se": 0.00015,
+      "electron_af_effective": 0.9781,
+      "S_total_Gy_per_Bq_s": 2.3385164332170486e-12,
+      "S_electrons": 2.310701211414844e-12,
+      "S_photons": 2.7815221802204876e-14,
+      "S_total_bounds_low_energy_electrons": [
+        2.337889953451644e-12,
+        2.339472639726847e-12
+      ],
+      "S_total_mGy_per_MBq_s": 0.0023385164332170487,
+      "photon_share": 0.011894388000489716
+    },
+    {
+      "mass_g": 100.0,
+      "radius_cm": 2.8794,
+      "photon_af": 0.0872,
+      "photon_af_se": 0.00022,
+      "electron_af_effective": 0.9858,
+      "S_total_Gy_per_Bq_s": 2.3823266325237515e-13,
+      "S_electrons": 2.328697943502546e-13,
+      "S_photons": 5.362868902120549e-15,
+      "S_total_bounds_low_energy_electrons": [
+        2.3820133926410493e-13,
+        2.3828047357786503e-13
+      ],
+      "S_total_mGy_per_MBq_s": 0.00023823266325237515,
+      "photon_share": 0.022511056330001725
+    },
+    {
+      "mass_g": 1000.0,
+      "radius_cm": 6.2035,
+      "photon_af": 0.1844,
+      "photon_af_se": 0.00033,
+      "electron_af_effective": 0.9893,
+      "S_total_Gy_per_Bq_s": 2.450310504907686e-14,
+      "S_electrons": 2.3369288281628216e-14,
+      "S_photons": 1.1338167674486423e-15,
+      "S_total_bounds_low_energy_electrons": [
+        2.450153884966335e-14,
+        2.4505495565351356e-14
+      ],
+      "S_total_mGy_per_MBq_s": 2.450310504907686e-05,
+      "photon_share": 0.04627237099860363
+    }
+  ],
+  "tac": {
+    "truth": {
+      "lam_phys_per_h": 0.004346753235605113,
+      "lam_out_per_h": 0.010122979740271324,
+      "lam_in_per_h": 0.35092034351557777,
+      "tia_MBq_h": 95.9354933257199,
+      "dose_10g_sphere_Gy_per_MBq_A0": 0.8076482196155298
+    },
+    "noise": "5 % multiplicative (log-normal)",
+    "draws": 2000,
+    "methods": {
+      "4 points (4, 24, 96, 168 h): trapezoid + physical-decay tail": {
+        "bias_pct": 25.72,
+        "sd_pct": 3.56,
+        "failed_fits": 0
+      },
+      "4 points (4, 24, 96, 168 h): trapezoid + fitted tail": {
+        "bias_pct": 0.95,
+        "sd_pct": 3.33,
+        "failed_fits": 0
+      },
+      "4 points (4, 24, 96, 168 h): mono-exponential fit": {
+        "bias_pct": 3.11,
+        "sd_pct": 3.05,
+        "failed_fits": 0
+      },
+      "4 points (4, 24, 96, 168 h): uptake-washout fit": {
+        "bias_pct": 0.03,
+        "sd_pct": 2.84,
+        "failed_fits": 0
+      },
+      "3 points (24, 96, 168 h): trapezoid + physical-decay tail": {
+        "bias_pct": 18.41,
+        "sd_pct": 3.53,
+        "failed_fits": 0
+      },
+      "3 points (24, 96, 168 h): trapezoid + fitted tail": {
+        "bias_pct": -6.29,
+        "sd_pct": 3.38,
+        "failed_fits": 0
+      },
+      "3 points (24, 96, 168 h): mono-exponential fit": {
+        "bias_pct": 3.1,
+        "sd_pct": 2.99,
+        "failed_fits": 0
+      }
+    }
+  },
+  "meta": {
+    "nucmed_version": "0.1.0",
+    "python": "3.12.16",
+    "numpy": "2.5.4",
+    "seed": 20261107,
+    "photons_per_row": 200000,
+    "runtime_s": 86.0
+  }
+}

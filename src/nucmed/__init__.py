@@ -11,8 +11,10 @@ Stages (each one is tested against a known reference):
     xsections  -> NIST XCOM water cross-sections, Klein-Nishina / Thomson
     mc         -> Monte Carlo photon transport (Compton, Rayleigh, photoelectric)
                   with forced detection and energy windows
-
-Planned: scatter correction (TEW), Lu-177 dosimetry.
+    scatter    -> triple-energy-window scatter estimate
+    radionuclide, photon3d, dosimetry
+               -> Lu-177 decay data, photon absorbed fractions and point
+                  kernels, TAC integration, MIRD sphere S-values
 """
 
 __version__ = "0.1.0"

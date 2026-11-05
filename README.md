@@ -1,12 +1,13 @@
 # nucmed-pipeline
 
-A small nuclear medicine imaging pipeline written from scratch in Python. It goes from emitted photon to reconstructed image, and next to absorbed dose. **Every stage is tested against an analytic or published reference.**
+A small nuclear medicine imaging pipeline written from scratch in Python. It goes from emitted photon to reconstructed image to absorbed dose. **Every stage is tested against an analytic or published reference.**
 
 ```
 phantom ──► SPECT forward model ──► OSEM reconstruction ──► quantification ──► dosimetry
- (IEC-like)  analytic projector, or   MLEM / OSEM with        contrast recovery,   (planned:
-             Monte Carlo photon       attenuation and         background           Lu-177 MIRD +
-             transport with scatter   resolution recovery     variability, bias    voxel kernels)
+ (IEC-like)  analytic projector, or   MLEM / OSEM with        contrast recovery,   (Stage 4:
+             Monte Carlo photon       attenuation and         background           Lu-177 MIRD
+             transport with scatter   resolution recovery,    variability, bias    S-values, TAC
+                                      TEW scatter correction                       integration)
 ```
 
 ![IEC demo](results/iec_demo/figure.png)
@@ -76,6 +77,52 @@ What this shows:
   - The rest of the gap (noise-free 0.905 vs noisy 0.95) appears only with noise. I haven't explained that part yet.
   - Contrast recovery read alone would reward over-correction. Bias against known truth catches it.
 
+## Stage 4: Lu-177 dosimetry (from `scripts/run_dosimetry_demo.py`, seed 20261107)
+
+![Dosimetry](results/dosimetry/figure.png)
+
+*Top left: photon absorbed fractions (AF) from our 3D photon Monte Carlo against the EGS4/MCNP reference values of Stabin & Konijnenberg (J Nucl Med 2000), for every tabulated sphere at 20–208 keV. Top right: Lu-177 self-dose S-values for unit-density spheres; electrons dominate, so the total curve sits on the electron curve. Bottom: a synthetic tumour time–activity curve and the error of different ways to integrate it (2000 noise draws).*
+
+All reference data are fetched by `scripts/fetch_reference_data.py`, which records where each number came from:
+- **Decay data:** ENSDF via the IAEA LiveChart API.
+- **Electron ranges:** NIST ESTAR.
+- **Photon data:** NIST XCOM, and NIST μ_en.
+- **Sphere absorbed fractions:** parsed from the free full text of Stabin & Konijnenberg 2000, with an internal consistency check on every row.
+
+**Validation against references:**
+
+| Check | Result |
+|---|---|
+| T4.1 Lu-177 decay data | T½ = 6.6443 d; spectrum mean 132.6 keV vs branch mean 133.6 keV (0.8 %); spectrum integrates to 1.0001 per decay. **Met.** |
+| T4.2 photon AF within max(5 %, EGS4–MCNP spread) of the reference | **Partially met: 59/112 rows.** 37/37 rows pass at 100–160 keV, the range of Lu-177's gammas (113, 208 keV). It fails at 30–60 keV, where our water model absorbs 5–16 % more than the reference. |
+| T4.3 small-sphere limit, AF → μ_en·3R/4 | **Met** (100 and 208 keV, within 5 %). |
+| T4.4 straight-line CSDA model is a lower bound on the electron AF | **Met** on 95/95 rows. |
+| T4.5 photon point kernel: energy conservation, and sphere AF from the kernel = direct simulation | **Met** (≥ 99 %; within 3 %). |
+| T4.6 TAC fits and integrals exact on noise-free data | **Met.** |
+
+**What went wrong first, and why T4.2 is only partly met.**
+- **Geometry.** My first photon model was an isolated sphere in vacuum, which came out up to 19 % low. The reference spheres sit *inside an infinite unit-density medium*, so photons can scatter back in. Matching that geometry fixed the shape of the disagreement but left a low-energy excess.
+- **Composition (exploratory).** The reference used MIRD tissue, not water. Water has more oxygen per gram, and the photoelectric effect rises steeply with atomic number. Re-running with XCOM data for ICRU four-component soft tissue brings 104/112 rows within tolerance (all ≥ 60 keV rows), median ratio 1.03.
+- **Not claimed.** I haven't matched the exact MIRD composition, and I don't claim the remaining 30–40 keV residual is explained.
+- **Effect on Lu-177.** Photons are ≤ 5 % of the S-value for spheres ≤ 1 kg, and the photon error at Lu-177 energies is ≤ 5 %, so the effect on Lu-177 S-values is below 0.3 %. All rows, for all three model variants, are in [`results/dosimetry/photon_af_validation.csv`](results/dosimetry/photon_af_validation.csv).
+
+**Lu-177 S-values** (unit-density spheres, electrons from the reference tables, photons from our MC):
+
+| Mass | 0.01 g | 0.1 g | 1 g | 10 g | 100 g | 1 kg |
+|---|---|---|---|---|---|---|
+| S (mGy per MBq·s) | 2.01 | 0.220 | 0.0229 | 2.34·10⁻³ | 2.38·10⁻⁴ | 2.45·10⁻⁵ |
+| electron AF | 0.85 | 0.93 | 0.96 | 0.98 | 0.99 | 0.99 |
+| photon share of S | 0.3 % | 0.4 % | 0.7 % | 1.2 % | 2.3 % | 4.6 % |
+
+The reference tables start at 0.1 MeV. Bounding the electron AF below that energy between φ(0.1 MeV) and 1 moves S by < 0.5 %. There is **no external Lu-177 S-value check**: the voxel S-value database planned as the reference (Lanconelli et al. 2012) needs a registered login, and I didn't register. That comparison is deferred, not done.
+
+**Time–activity integration** (synthetic tumour: uptake half-time 2 h, biological washout half-life 120 h, 5 % noise; descriptive):
+- Trapezoid integration with a physical-decay-only tail overestimates the time-integrated activity by 26 % (4 time points) and 18 % (3 points), because it ignores biological washout after the last sample.
+- With a tail fitted to the last two points the error is +0.9 % (4 points) and −6.3 % (3 points; the first-day uptake is missed).
+- A fitted uptake–washout model is unbiased with 4 points (SD 2.8 %).
+
+Caveats: spheres only, so no voxel-level dose convolution yet; unit density; electron AFs are reference data, not something this code computes; the kinetics are synthetic.
+
 ## What is validated (`uv run pytest`)
 
 | Module | Check | Reference |
@@ -102,16 +149,25 @@ What this shows:
 | `mc` | Woodcock tracking through a water + lung slab gives exp(−ΣμᵢLᵢ) within 2 % | analytic |
 | `scatter` | TEW trapezoid exact for a linear spectrum; smoothing preserves counts and wraps in angle | analytic |
 | `recon` | OSEM with the exact additive term recovers a contaminated uniform disk (ignoring it: > 15 % high) | analytic truth |
+| `radionuclide` | Lu-177 T½; beta spectrum mean and integral vs ENSDF branches; principal gamma yields | ENSDF (IAEA) |
+| `photon3d` | photon AF in spheres vs EGS4/MCNP (regression guard; full pre-registered check in the demo) | Stabin & Konijnenberg 2000 |
+| `photon3d` | small-sphere AF → μ_en·3R/4 | NIST μ_en |
+| `photon3d` | point kernel conserves energy; reproduces the direct sphere AF | consistency |
+| `dosimetry` | distance-to-surface distribution 3L/4R − L³/16R³ (sampled) | analytic chord result |
+| `dosimetry` | straight-line CSDA electron AF ≤ reference AF (lower bound) | NIST ESTAR, reference tables |
+| `dosimetry` | TAC fits and integrals exact on noise-free data; trapezoid converges | analytic |
 | `mc` | primary-only MC sinogram = analytic projector: total within 2 %, NRMSE < 5 % (observed 0.06 %, 1.2 %) | independent model |
 
 ## Run it
 
 ```bash
 uv sync
-uv run pytest                          # 57 tests, ~15 s
+uv run pytest                          # 106 tests, ~30 s
 uv run python scripts/run_iec_demo.py  # Stage 1, ~2 s on an Apple M5
 uv run python scripts/run_mc_demo.py   # Stage 2, 10⁶ photons, ~70 s
 uv run python scripts/run_tew_demo.py  # Stage 3, uses Stage 2 output, ~6 s
+uv run python scripts/run_dosimetry_demo.py  # Stage 4, ~90 s
+uv run python scripts/fetch_reference_data.py  # re-download all reference data (network)
 ```
 
 ## Layout
@@ -128,14 +184,17 @@ src/nucmed/
   xsections.py   NIST XCOM water data, Klein–Nishina, Thomson
   mc.py          Monte Carlo transport: Woodcock tracking, forced detection, energy windows
   scatter.py     TEW scatter estimate, sinogram smoothing
-  data/          XCOM table with query provenance
+  radionuclide.py  Lu-177 decay data (ENSDF)
+  photon3d.py    3D photon MC: absorbed fractions in spheres, point kernels
+  dosimetry.py   TAC fitting/integration, electron AFs, MIRD sphere S-values
+  data/          reference tables (XCOM, ENSDF, ESTAR, NIST μ_en, Stabin & Konijnenberg 2000) with provenance
 tests/           analytic and property tests
 scripts/         reproducible runs that write to results/
 ```
 
 ## Roadmap
 
-See [`DESIGN.md`](DESIGN.md). Done: Monte Carlo photon transport (Stage 2), TEW scatter correction (Stage 3). Next: Lu-177 dosimetry (time–activity curve fitting, MIRD S-values, voxel dose-point-kernel convolution) → optional GPU (JAX/MLX).
+See [`DESIGN.md`](DESIGN.md). Done: Monte Carlo photon transport (Stage 2), TEW scatter correction (Stage 3), Lu-177 sphere dosimetry (Stage 4). Possible next steps: voxel-level dose and the Lanconelli voxel S comparison (needs a registered download), an end-to-end Lu-177 imaging → dose chain, optional GPU (JAX/MLX).
 
 ## Data and scope
 

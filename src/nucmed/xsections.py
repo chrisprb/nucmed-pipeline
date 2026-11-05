@@ -26,18 +26,20 @@ N_A = 6.02214076e23
 ELECTRONS_PER_G_WATER = N_A * (0.111898 * 1 / 1.008 + 0.888102 * 8 / 15.999)
 E_TC99M_KEV = 140.5  # principal gamma of Tc-99m
 
-_DATA = Path(__file__).with_name("data") / "xcom_water.csv"
+_DIR = Path(__file__).with_name("data")
+MATERIALS = {"water": "xcom_water.csv", "tissue_icru4": "xcom_tissue_icru4.csv"}
 
 
-@lru_cache(maxsize=1)
-def _table() -> np.ndarray:
-    return np.loadtxt(_DATA, delimiter=",", comments="#", skiprows=6)
+@lru_cache(maxsize=4)
+def _table(material: str = "water") -> np.ndarray:
+    return np.loadtxt(_DIR / MATERIALS[material], delimiter=",", comments="#", skiprows=6)
 
 
-def mass_coefficients(e_kev) -> dict[str, np.ndarray]:
-    """Water mass coefficients (cm^2/g) at energy ``e_kev``: keys
-    'coherent', 'incoherent', 'photoelectric', 'total'."""
-    t = _table()
+def mass_coefficients(e_kev, material: str = "water") -> dict[str, np.ndarray]:
+    """Mass coefficients (cm^2/g) at energy ``e_kev``: keys 'coherent',
+    'incoherent', 'photoelectric', 'total'. ``material``: 'water' (default) or
+    'tissue_icru4' (exploratory use only)."""
+    t = _table(material)
     e_mev = np.asarray(e_kev, dtype=float) / 1000.0
     if np.any(e_mev < t[0, 0] * (1 - 1e-9)) or np.any(e_mev > t[-1, 0] * (1 + 1e-9)):
         raise ValueError(f"energy outside tabulated range {t[0,0]*1e3:.0f}-{t[-1,0]*1e3:.0f} keV")
@@ -57,9 +59,9 @@ def mu_water(e_kev) -> np.ndarray:
 class WaterTable:
     """Fast lookup on a fine log-spaced grid, for the transport inner loop."""
 
-    def __init__(self, e_min: float = 20.0, e_max: float = 208.0, n: int = 2000):
+    def __init__(self, e_min: float = 20.0, e_max: float = 208.0, n: int = 2000, material: str = "water"):
         self.le = np.linspace(np.log(e_min), np.log(e_max), n)
-        c = mass_coefficients(np.exp(self.le))
+        c = mass_coefficients(np.exp(self.le), material)
         self.log_tot = np.log(c["total"])
         self.f_inc = c["incoherent"] / c["total"]
         self.f_coh = c["coherent"] / c["total"]
