@@ -1,0 +1,26 @@
+[project]
+name = "nucmed"
+version = "0.1.0"
+description = "End-to-end nuclear medicine imaging pipeline: phantom -> SPECT forward model -> OSEM -> quantification -> dosimetry, validated against analytic and published references."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Cristhian" }]
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "matplotlib>=3.9",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nucmed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
