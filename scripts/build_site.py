@@ -231,8 +231,7 @@ def main() -> None:
     (DOCS / "index.html").write_text(
         '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-        + body.replace("<!--/head-->", "</head>\n<body>", 1)
-        + "\n</body>\n</html>\n")
+        + body.replace("<!--/head-->", "</head>\n<body>", 1) + "\n</body>\n</html>\n")
     if args.fragment:
         args.fragment.write_text(tpl.substitute(v, fontfaces=fontfaces(inline=True)).replace("<!--/head-->", "", 1))
     print(f"wrote {DOCS / 'index.html'} ({v['n_met']}/{v['n_targets']} targets met, {v['n_tests']} tests)")
