@@ -19,9 +19,11 @@ import numpy as np
 from .geometry import ImageGrid
 
 # Linear attenuation coefficients at 140 keV (Tc-99m), cm^-1.
-# Water ~0.15 cm^-1 is the commonly used narrow-beam value [verify against NIST XCOM].
-MU_WATER_140KEV = 0.154  # [verify]
-MU_LUNG_140KEV = 0.3 * MU_WATER_140KEV  # lung-equivalent insert, rough [verify]
+# Water: NIST XCOM total mu/rho with coherent at 140.5 keV = 0.1537 cm^2/g
+# (queried 2026-11-05, see data/xcom_water.csv); rho = 1 g/cm^3.
+MU_WATER_140KEV = 0.1537
+LUNG_DENSITY = 0.3  # lung-equivalent insert, relative to water; rough modelling choice [verify]
+MU_LUNG_140KEV = LUNG_DENSITY * MU_WATER_140KEV
 
 
 def _supersampled(grid: ImageGrid, inside, ss: int = 4) -> np.ndarray:

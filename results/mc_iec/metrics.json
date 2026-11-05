@@ -1,0 +1,191 @@
+{
+  "meta": {
+    "nucmed_version": "0.1.0",
+    "python": "3.12.16",
+    "numpy": "2.5.4",
+    "seed": 20261105,
+    "photons": 1000000,
+    "expected_primary_counts": 1000000.0,
+    "mc": {
+      "fwhm_frac": 0.1,
+      "e_cut_keV": 90.0,
+      "fine_grid_cm": 0.2,
+      "collisions_per_photon": 1.848
+    },
+    "recon": {
+      "grid_cm": 0.4,
+      "model": "OSEM + AC + RR (Stage 1 system matrix)",
+      "iters": 12,
+      "subsets": 8,
+      "noise_realisations": 10
+    },
+    "acquisition": {
+      "n_angles": 120,
+      "radius_cm": 20.0,
+      "fwhm0_cm": 0.25,
+      "slope": 0.05
+    },
+    "mc_primary_over_analytic_total": 0.9995,
+    "note": "2D slice of an axially infinite phantom; Rayleigh without form factor; metrics are 2D NEMA-style approximations, not NU 2 compliant.",
+    "runtime_mc_s": 66.6,
+    "runtime_s": 70.6
+  },
+  "windows": {
+    "photopeak": {
+      "range_keV": [
+        126.45,
+        154.55
+      ],
+      "scatter_fraction": 0.2627,
+      "counts_relative_to_photopeak": 1.0
+    },
+    "lower": {
+      "range_keV": [
+        123.45,
+        126.45
+      ],
+      "scatter_fraction": 0.9079,
+      "counts_relative_to_photopeak": 0.0582
+    },
+    "upper": {
+      "range_keV": [
+        154.55,
+        157.55
+      ],
+      "scatter_fraction": 0.0587,
+      "counts_relative_to_photopeak": 0.0057
+    }
+  },
+  "preregistered_check": {
+    "crc_C_below_A_all_spheres": true,
+    "background_bias_C_positive": true
+  },
+  "results": {
+    "A": {
+      "label": "A. analytic data (inverse crime)",
+      "expected_counts": 1000533,
+      "crc": {
+        "sphere_10mm": {
+          "mean": 0.3517,
+          "sd": 0.0883
+        },
+        "sphere_13mm": {
+          "mean": 0.5332,
+          "sd": 0.0509
+        },
+        "sphere_17mm": {
+          "mean": 0.7045,
+          "sd": 0.0515
+        },
+        "sphere_22mm": {
+          "mean": 0.7601,
+          "sd": 0.0212
+        },
+        "sphere_28mm": {
+          "mean": 0.8315,
+          "sd": 0.0152
+        },
+        "sphere_37mm": {
+          "mean": 0.8656,
+          "sd": 0.0167
+        }
+      },
+      "background_variability": {
+        "mean": 0.1569,
+        "sd": 0.0084
+      },
+      "background_bias": {
+        "mean": 0.0023,
+        "sd": 0.0098
+      },
+      "lung_residual_over_background": {
+        "mean": 0.2481,
+        "sd": 0.0195
+      }
+    },
+    "B": {
+      "label": "B. MC primaries only",
+      "expected_counts": 1000000,
+      "crc": {
+        "sphere_10mm": {
+          "mean": 0.3852,
+          "sd": 0.0481
+        },
+        "sphere_13mm": {
+          "mean": 0.5973,
+          "sd": 0.0465
+        },
+        "sphere_17mm": {
+          "mean": 0.7402,
+          "sd": 0.0495
+        },
+        "sphere_22mm": {
+          "mean": 0.7744,
+          "sd": 0.0317
+        },
+        "sphere_28mm": {
+          "mean": 0.8333,
+          "sd": 0.028
+        },
+        "sphere_37mm": {
+          "mean": 0.8615,
+          "sd": 0.0203
+        }
+      },
+      "background_variability": {
+        "mean": 0.1641,
+        "sd": 0.0134
+      },
+      "background_bias": {
+        "mean": 0.0015,
+        "sd": 0.0095
+      },
+      "lung_residual_over_background": {
+        "mean": 0.2476,
+        "sd": 0.0186
+      }
+    },
+    "C": {
+      "label": "C. MC with scatter, uncorrected",
+      "expected_counts": 1356226,
+      "crc": {
+        "sphere_10mm": {
+          "mean": 0.3176,
+          "sd": 0.0614
+        },
+        "sphere_13mm": {
+          "mean": 0.4769,
+          "sd": 0.0566
+        },
+        "sphere_17mm": {
+          "mean": 0.5985,
+          "sd": 0.0473
+        },
+        "sphere_22mm": {
+          "mean": 0.6527,
+          "sd": 0.0382
+        },
+        "sphere_28mm": {
+          "mean": 0.6889,
+          "sd": 0.0207
+        },
+        "sphere_37mm": {
+          "mean": 0.7509,
+          "sd": 0.0159
+        }
+      },
+      "background_variability": {
+        "mean": 0.1429,
+        "sd": 0.0142
+      },
+      "background_bias": {
+        "mean": 0.4083,
+        "sd": 0.0133
+      },
+      "lung_residual_over_background": {
+        "mean": 0.3207,
+        "sd": 0.019
+      }
+    }
+  }
+}

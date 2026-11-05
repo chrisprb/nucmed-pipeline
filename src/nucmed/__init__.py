@@ -8,8 +8,11 @@ Stages (each one is tested against a known reference):
     recon      -> MLEM / OSEM
     metrics    -> contrast recovery, background variability, RMSE
     decay      -> Bateman decay chains (e.g. Mo-99 -> Tc-99m generator)
+    xsections  -> NIST XCOM water cross-sections, Klein-Nishina / Thomson
+    mc         -> Monte Carlo photon transport (Compton, Rayleigh, photoelectric)
+                  with forced detection and energy windows
 
-Planned: Monte Carlo photon transport, scatter correction (TEW), Lu-177 dosimetry.
+Planned: scatter correction (TEW), Lu-177 dosimetry.
 """
 
 __version__ = "0.1.0"

@@ -30,19 +30,26 @@ from scipy.special import erf
 from .geometry import Acquisition, ImageGrid
 
 
-def attenuation_factors(mu: np.ndarray, grid: ImageGrid, theta: float) -> np.ndarray:
-    """exp(-path integral of mu) from each pixel centre to the detector at angle theta."""
+def line_integrals(mu: np.ndarray, grid: ImageGrid, theta: float,
+                   step_cm: float | None = None, order: int = 1) -> np.ndarray:
+    """Integral of ``mu`` from each pixel centre to the detector at angle theta,
+    along the acceptance direction u. Midpoint rule; ``order`` is the
+    interpolation order of the map (1 bilinear, 0 nearest)."""
     x, y = grid.centres()
     ux, uy = -np.sin(theta), np.cos(theta)
-    h = grid.pixel_cm
+    h = grid.pixel_cm if step_cm is None else step_cm
     n_steps = int(np.ceil(grid.fov_cm * np.sqrt(2) / h)) + 1
     k = (np.arange(n_steps) + 0.5) * h  # midpoints of each step
     xs = x[..., None] + ux * k
     ys = y[..., None] + uy * k
     row, col = grid.to_index(xs, ys)
-    vals = map_coordinates(mu, [row.ravel(), col.ravel()], order=1, mode="constant", cval=0.0)
-    line_integral = vals.reshape(xs.shape).sum(axis=-1) * h
-    return np.exp(-line_integral)
+    vals = map_coordinates(mu, [row.ravel(), col.ravel()], order=order, mode="constant", cval=0.0)
+    return vals.reshape(xs.shape).sum(axis=-1) * h
+
+
+def attenuation_factors(mu: np.ndarray, grid: ImageGrid, theta: float) -> np.ndarray:
+    """exp(-path integral of mu) from each pixel centre to the detector at angle theta."""
+    return np.exp(-line_integrals(mu, grid, theta))
 
 
 @dataclass
