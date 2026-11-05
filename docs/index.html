@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>nucmed-pipeline</title>
+<meta name="description" content="A SPECT imaging and Lu-177 dosimetry pipeline written from scratch, with every stage checked against analytic results or published references.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a lab report on detector-blue paper. One reading column; figures and
+   tables break out wider as plates; the validation ledger is the spine. */
+:root {
+  --paper: #f2f5f6;
+  --plate: #fcfcfb;
+  --ink: #14212a;
+  --muted: #55646f;
+  --rule: #d3dbe0;
+  --accent: #0d6680;
+  --primary: #2a78d6;
+  --scatter: #d9592a;
+  --met: #1d7346;
+  --met-bg: #e2f1e8;
+  --part: #8f5d00;
+  --part-bg: #f8ecd2;
+  --fail: #a33131;
+  --fail-bg: #f7e1e1;
+  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --measure: 68ch;
+  --wide: 1080px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e161b; --plate: #f4f6f6; --ink: #e2e9ed; --muted: #9aabb6; --rule: #26343d;
+    --accent: #5bb8d4; --primary: #6aa5ee; --scatter: #f08a5d;
+    --met: #7fd3a2; --met-bg: #143322; --part: #f0c068; --part-bg: #3a2c0d; --fail: #f19a9a; --fail-bg: #3d1a1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e161b; --plate: #f4f6f6; --ink: #e2e9ed; --muted: #9aabb6; --rule: #26343d;
+  --accent: #5bb8d4; --primary: #6aa5ee; --scatter: #f08a5d;
+  --met: #7fd3a2; --met-bg: #143322; --part: #f0c068; --part-bg: #3a2c0d; --fail: #f19a9a; --fail-bg: #3d1a1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--f-body); font-size: 1.0625rem; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: var(--wide); margin: 0 auto; padding-block: 3rem 4rem; display: grid; gap: 4.5rem; }
+.col { max-width: var(--measure); }
+section { display: grid; gap: 1.1rem; min-width: 0; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); font-weight: 600; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+.eyebrow { font-family: var(--f-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: 1.25rem; line-height: 1.5; color: var(--ink); }
+.muted { color: var(--muted); }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 2.5rem; align-items: center; }
+.hero-text { display: grid; gap: 1.2rem; min-width: 0; }
+.facts { display: flex; flex-wrap: wrap; gap: 0.5rem 1.6rem; font-family: var(--f-mono); font-size: 0.86rem; color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 500; }
+figure { margin: 0; display: grid; gap: 0.6rem; min-width: 0; }
+figcaption { font-size: 0.92rem; color: var(--muted); max-width: var(--measure); }
+.spectrum { width: 100%; height: auto; display: block; }
+.spectrum .window { fill: var(--accent); opacity: 0.09; }
+.spectrum .win-label, .spectrum .tick { font-family: var(--f-mono); font-size: 11px; fill: var(--muted); }
+.spectrum .ax { stroke: var(--muted); stroke-width: 1; }
+.spectrum .ln { fill: none; stroke-width: 2.2; stroke-linejoin: round; }
+.spectrum .tot { stroke: var(--ink); }
+.spectrum .prim { stroke: var(--primary); }
+.spectrum .scat { stroke: var(--scatter); }
+.spectrum .lab { font-family: var(--f-display); font-size: 13px; font-weight: 600; }
+.spectrum .tot-t { fill: var(--ink); } .spectrum .prim-t { fill: var(--primary); } .spectrum .scat-t { fill: var(--scatter); }
+
+/* Pipeline */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+.flow li { padding: 0.9rem 1rem 0.9rem 0; display: grid; gap: 0.3rem; align-content: start; border-right: 1px solid var(--rule); padding-left: 1rem; }
+.flow li:first-child { padding-left: 0; }
+.flow li:last-child { border-right: 0; }
+.flow .n { font-family: var(--f-mono); font-size: 0.78rem; color: var(--accent); }
+.flow b { font-family: var(--f-display); font-weight: 600; font-size: 1.02rem; }
+.flow span { font-size: 0.92rem; color: var(--muted); line-height: 1.45; }
+
+/* Plates and tables */
+.plate { background: var(--plate); border-radius: 6px; padding: 0.6rem; border: 1px solid var(--rule); }
+.plate img { display: block; width: 100%; height: auto; }
+.table-wrap { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { text-align: left; padding: 0.5rem 0.75rem 0.5rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font-family: var(--f-mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; border-bottom: 1.5px solid var(--ink); white-space: nowrap; }
+tbody th { font-weight: 600; font-family: var(--f-display); }
+table.num td { font-family: var(--f-mono); font-size: 0.86rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.num small { color: var(--muted); margin-left: 0.15em; font-size: 0.8em; }
+table.ledger td:nth-child(2) { min-width: 18rem; }
+table.ledger td code { color: var(--muted); font-size: 0.78rem; word-break: break-all; }
+table.ledger tbody th { font-family: var(--f-mono); font-weight: 500; color: var(--accent); }
+.st { display: inline-block; font-family: var(--f-mono); font-size: 0.76rem; padding: 0.12rem 0.5rem; border-radius: 99px; white-space: nowrap; }
+.st.met { color: var(--met); background: var(--met-bg); }
+.st.part { color: var(--part); background: var(--part-bg); }
+.st.fail { color: var(--fail); background: var(--fail-bg); }
+
+/* Stage layout */
+.stage-head { display: grid; gap: 0.4rem; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem 2.5rem; }
+.two > * { min-width: 0; }
+.note { border-left: 3px solid var(--part); padding: 0.2rem 0 0.2rem 1rem; display: grid; gap: 0.5rem; }
+.note h3 { color: var(--part); font-size: 1rem; }
+ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; }
+pre { margin: 0; background: var(--plate); color: #14212a; border: 1px solid var(--rule); border-radius: 6px; padding: 1rem; overflow-x: auto; font-family: var(--f-mono); font-size: 0.85rem; line-height: 1.55; }
+footer { border-top: 1px solid var(--rule); padding-top: 1.5rem; font-size: 0.9rem; color: var(--muted); display: grid; gap: 0.4rem; }
+
+@media (max-width: 860px) {
+  .hero, .two { grid-template-columns: minmax(0, 1fr); }
+  .flow { grid-template-columns: minmax(0, 1fr); }
+  .flow li, .flow li:first-child { border-right: 0; border-bottom: 1px solid var(--rule); padding-left: 0; }
+  main { gap: 3.5rem; padding-block: 2rem 3rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .spectrum .ln { stroke-dasharray: 2000; stroke-dashoffset: 0; animation: draw 1.4s ease-out both; }
+  @keyframes draw { from { stroke-dashoffset: 2000; } to { stroke-dashoffset: 0; } }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">Nuclear medicine · SPECT · Lu-177 dosimetry</p>
+    <h1>nucmed-pipeline</h1>
+    <p class="lede">A SPECT imaging and dosimetry pipeline written from scratch in Python, from emitted photon to reconstructed image to absorbed dose. Every stage is checked against an analytic result or a published reference, and the checks that failed are reported next to the ones that passed.</p>
+    <div class="facts">
+      <span><b>4</b> stages</span>
+      <span><b>106</b> tests</span>
+      <span><b>13 / 14</b> pre-registered targets met</span>
+      <span>synthetic phantoms only</span>
+    </div>
+  </div>
+  <figure>
+    <svg viewBox="0 0 640 260" role="img" aria-labelledby="spec-t spec-d" class="spectrum">
+<title id="spec-t">Simulated Tc-99m energy spectrum</title>
+<desc id="spec-d">Detected counts against measured energy from the Stage 2 Monte Carlo. The photopeak at 140.5 keV sits on a broad shoulder of scattered photons; 26% of the counts in the 126 to 155 keV window are scattered.</desc>
+<rect x="409.6" y="10" width="156.3" height="212" class="window"/>
+<text x="487.7" y="22" class="win-label" text-anchor="middle">photopeak window</text>
+<line x1="40" x2="624" y1="222" y2="222" class="ax"/>
+<line x1="40.0" x2="40.0" y1="222" y2="227" class="ax"/><text x="40.0" y="241" class="tick" text-anchor="middle">60</text><line x1="151.2" x2="151.2" y1="222" y2="227" class="ax"/><text x="151.2" y="241" class="tick" text-anchor="middle">80</text><line x1="262.5" x2="262.5" y1="222" y2="227" class="ax"/><text x="262.5" y="241" class="tick" text-anchor="middle">100</text><line x1="373.7" x2="373.7" y1="222" y2="227" class="ax"/><text x="373.7" y="241" class="tick" text-anchor="middle">120</text><line x1="485.0" x2="485.0" y1="222" y2="227" class="ax"/><text x="485.0" y="241" class="tick" text-anchor="middle">140</text><line x1="596.2" x2="596.2" y1="222" y2="227" class="ax"/><text x="596.2" y="241" class="tick" text-anchor="middle">160</text>
+<text x="624" y="258" class="tick" text-anchor="end">keV</text>
+<polyline points="41.4,221.4 44.2,221.3 47.0,221.1 49.7,220.8 52.5,220.5 55.3,220.2 58.1,219.7 60.9,219.3 63.6,218.7 66.4,218.1 69.2,217.3 72.0,216.6 74.8,215.7 77.5,214.8 80.3,213.8 83.1,212.7 85.9,211.6 88.7,210.5 91.4,209.3 94.2,208.1 97.0,206.9 99.8,205.6 102.6,204.4 105.4,203.2 108.1,202.0 110.9,200.8 113.7,199.6 116.5,198.4 119.3,197.3 122.0,196.2 124.8,195.1 127.6,194.0 130.4,192.9 133.2,191.8 135.9,190.7 138.7,189.6 141.5,188.5 144.3,187.4 147.1,186.2 149.8,185.1 152.6,183.8 155.4,182.6 158.2,181.3 161.0,179.9 163.8,178.5 166.5,177.1 169.3,175.6 172.1,174.0 174.9,172.4 177.7,170.7 180.4,169.0 183.2,167.2 186.0,165.5 188.8,163.7 191.6,161.9 194.3,160.1 197.1,158.4 199.9,156.6 202.7,155.0 205.5,153.4 208.2,151.9 211.0,150.6 213.8,149.3 216.6,148.2 219.4,147.2 222.2,146.4 224.9,145.7 227.7,145.2 230.5,144.8 233.3,144.6 236.1,144.6 238.8,144.6 241.6,144.8 244.4,145.1 247.2,145.5 250.0,146.0 252.7,146.5 255.5,147.1 258.3,147.7 261.1,148.4 263.9,149.1 266.6,149.8 269.4,150.5 272.2,151.2 275.0,151.9 277.8,152.6 280.6,153.2 283.3,153.9 286.1,154.5 288.9,155.1 291.7,155.6 294.5,156.1 297.2,156.6 300.0,157.1 302.8,157.6 305.6,158.0 308.4,158.4 311.1,158.8 313.9,159.1 316.7,159.4 319.5,159.7 322.3,160.0 325.0,160.3 327.8,160.5 330.6,160.8 333.4,161.0 336.2,161.2 339.0,161.3 341.7,161.5 344.5,161.6 347.3,161.8 350.1,161.9 352.9,162.0 355.6,162.1 358.4,162.1 361.2,162.2 364.0,162.3 366.8,162.3 369.5,162.3 372.3,162.4 375.1,162.4 377.9,162.4 380.7,162.4 383.4,162.4 386.2,162.4 389.0,162.4 391.8,162.3 394.6,162.3 397.4,162.3 400.1,162.3 402.9,162.3 405.7,162.3 408.5,162.3 411.3,162.3 414.0,162.4 416.8,162.4 419.6,162.5 422.4,162.7 425.2,162.9 427.9,163.1 430.7,163.4 433.5,163.7 436.3,164.2 439.1,164.6 441.8,165.2 444.6,165.9 447.4,166.7 450.2,167.5 453.0,168.5 455.8,169.6 458.5,170.8 461.3,172.1 464.1,173.5 466.9,175.0 469.7,176.6 472.4,178.3 475.2,180.1 478.0,182.0 480.8,183.9 483.6,185.9 486.3,187.9 489.1,190.0 491.9,192.1 494.7,194.1 497.5,196.2 500.2,198.2 503.0,200.1 505.8,202.0 508.6,203.8 511.4,205.6 514.2,207.2 516.9,208.8 519.7,210.3 522.5,211.6 525.3,212.9 528.1,214.0 530.8,215.1 533.6,216.0 536.4,216.8 539.2,217.6 542.0,218.3 544.7,218.8 547.5,219.3 550.3,219.8 553.1,220.2 555.9,220.5 558.6,220.8 561.4,221.0 564.2,221.2 567.0,221.3 569.8,221.5 572.6,221.6 575.3,221.7 578.1,221.7 580.9,221.8 583.7,221.8 586.5,221.9 589.2,221.9 592.0,221.9 594.8,221.9 597.6,222.0" class="ln scat"/>
+<polyline points="41.4,222.0 44.2,222.0 47.0,222.0 49.7,222.0 52.5,222.0 55.3,222.0 58.1,222.0 60.9,222.0 63.6,222.0 66.4,222.0 69.2,222.0 72.0,222.0 74.8,222.0 77.5,222.0 80.3,222.0 83.1,222.0 85.9,222.0 88.7,222.0 91.4,222.0 94.2,222.0 97.0,222.0 99.8,222.0 102.6,222.0 105.4,222.0 108.1,222.0 110.9,222.0 113.7,222.0 116.5,222.0 119.3,222.0 122.0,222.0 124.8,222.0 127.6,222.0 130.4,222.0 133.2,222.0 135.9,222.0 138.7,222.0 141.5,222.0 144.3,222.0 147.1,222.0 149.8,222.0 152.6,222.0 155.4,222.0 158.2,222.0 161.0,222.0 163.8,222.0 166.5,222.0 169.3,222.0 172.1,222.0 174.9,222.0 177.7,222.0 180.4,222.0 183.2,222.0 186.0,222.0 188.8,222.0 191.6,222.0 194.3,222.0 197.1,222.0 199.9,222.0 202.7,222.0 205.5,222.0 208.2,222.0 211.0,222.0 213.8,222.0 216.6,222.0 219.4,222.0 222.2,222.0 224.9,222.0 227.7,222.0 230.5,222.0 233.3,222.0 236.1,222.0 238.8,222.0 241.6,222.0 244.4,222.0 247.2,222.0 250.0,222.0 252.7,222.0 255.5,222.0 258.3,222.0 261.1,222.0 263.9,222.0 266.6,222.0 269.4,222.0 272.2,222.0 275.0,222.0 277.8,222.0 280.6,222.0 283.3,222.0 286.1,222.0 288.9,222.0 291.7,222.0 294.5,222.0 297.2,222.0 300.0,222.0 302.8,222.0 305.6,222.0 308.4,222.0 311.1,222.0 313.9,222.0 316.7,222.0 319.5,222.0 322.3,222.0 325.0,222.0 327.8,222.0 330.6,222.0 333.4,222.0 336.2,222.0 339.0,222.0 341.7,222.0 344.5,222.0 347.3,222.0 350.1,222.0 352.9,222.0 355.6,221.9 358.4,221.9 361.2,221.9 364.0,221.9 366.8,221.8 369.5,221.7 372.3,221.6 375.1,221.5 377.9,221.4 380.7,221.2 383.4,220.9 386.2,220.6 389.0,220.2 391.8,219.7 394.6,219.0 397.4,218.3 400.1,217.3 402.9,216.1 405.7,214.7 408.5,213.1 411.3,211.1 414.0,208.8 416.8,206.1 419.6,203.0 422.4,199.4 425.2,195.3 427.9,190.8 430.7,185.7 433.5,180.1 436.3,174.0 439.1,167.3 441.8,160.2 444.6,152.6 447.4,144.6 450.2,136.3 453.0,127.8 455.8,119.2 458.5,110.6 461.3,102.1 464.1,93.8 466.9,85.9 469.7,78.6 472.4,71.9 475.2,66.0 478.0,61.0 480.8,57.0 483.6,54.1 486.3,52.3 489.1,51.7 491.9,52.3 494.7,54.1 497.5,57.0 500.2,61.0 503.0,66.0 505.8,71.9 508.6,78.6 511.4,85.9 514.2,93.8 516.9,102.1 519.7,110.6 522.5,119.2 525.3,127.8 528.1,136.3 530.8,144.6 533.6,152.6 536.4,160.2 539.2,167.3 542.0,174.0 544.7,180.1 547.5,185.7 550.3,190.8 553.1,195.3 555.9,199.4 558.6,203.0 561.4,206.1 564.2,208.8 567.0,211.1 569.8,213.1 572.6,214.7 575.3,216.1 578.1,217.3 580.9,218.3 583.7,219.0 586.5,219.7 589.2,220.2 592.0,220.6 594.8,220.9 597.6,221.2" class="ln prim"/>
+<polyline points="41.4,221.4 44.2,221.3 47.0,221.1 49.7,220.8 52.5,220.5 55.3,220.2 58.1,219.7 60.9,219.3 63.6,218.7 66.4,218.1 69.2,217.3 72.0,216.6 74.8,215.7 77.5,214.8 80.3,213.8 83.1,212.7 85.9,211.6 88.7,210.5 91.4,209.3 94.2,208.1 97.0,206.9 99.8,205.6 102.6,204.4 105.4,203.2 108.1,202.0 110.9,200.8 113.7,199.6 116.5,198.4 119.3,197.3 122.0,196.2 124.8,195.1 127.6,194.0 130.4,192.9 133.2,191.8 135.9,190.7 138.7,189.6 141.5,188.5 144.3,187.4 147.1,186.2 149.8,185.1 152.6,183.8 155.4,182.6 158.2,181.3 161.0,179.9 163.8,178.5 166.5,177.1 169.3,175.6 172.1,174.0 174.9,172.4 177.7,170.7 180.4,169.0 183.2,167.2 186.0,165.5 188.8,163.7 191.6,161.9 194.3,160.1 197.1,158.4 199.9,156.6 202.7,155.0 205.5,153.4 208.2,151.9 211.0,150.6 213.8,149.3 216.6,148.2 219.4,147.2 222.2,146.4 224.9,145.7 227.7,145.2 230.5,144.8 233.3,144.6 236.1,144.6 238.8,144.6 241.6,144.8 244.4,145.1 247.2,145.5 250.0,146.0 252.7,146.5 255.5,147.1 258.3,147.7 261.1,148.4 263.9,149.1 266.6,149.8 269.4,150.5 272.2,151.2 275.0,151.9 277.8,152.6 280.6,153.2 283.3,153.9 286.1,154.5 288.9,155.1 291.7,155.6 294.5,156.1 297.2,156.6 300.0,157.1 302.8,157.6 305.6,158.0 308.4,158.4 311.1,158.8 313.9,159.1 316.7,159.4 319.5,159.7 322.3,160.0 325.0,160.3 327.8,160.5 330.6,160.8 333.4,161.0 336.2,161.2 339.0,161.3 341.7,161.5 344.5,161.6 347.3,161.7 350.1,161.9 352.9,161.9 355.6,162.0 358.4,162.1 361.2,162.1 364.0,162.1 366.8,162.1 369.5,162.1 372.3,162.0 375.1,161.9 377.9,161.8 380.7,161.6 383.4,161.3 386.2,161.0 389.0,160.5 391.8,160.0 394.6,159.4 397.4,158.6 400.1,157.6 402.9,156.4 405.7,155.0 408.5,153.4 411.3,151.4 414.0,149.1 416.8,146.5 419.6,143.5 422.4,140.1 425.2,136.2 427.9,131.9 430.7,127.1 433.5,121.8 436.3,116.1 439.1,109.9 441.8,103.4 444.6,96.5 447.4,89.3 450.2,81.9 453.0,74.3 455.8,66.8 458.5,59.3 461.3,52.1 464.1,45.3 466.9,38.9 469.7,33.2 472.4,28.2 475.2,24.1 478.0,21.0 480.8,18.9 483.6,18.0 486.3,18.3 489.1,19.7 491.9,22.4 494.7,26.2 497.5,31.2 500.2,37.2 503.0,44.1 505.8,51.9 508.6,60.4 511.4,69.5 514.2,79.1 516.9,88.9 519.7,98.8 522.5,108.8 525.3,118.7 528.1,128.4 530.8,137.7 533.6,146.6 536.4,155.0 539.2,162.9 542.0,170.2 544.7,176.9 547.5,183.1 550.3,188.6 553.1,193.5 555.9,197.9 558.6,201.7 561.4,205.1 564.2,208.0 567.0,210.4 569.8,212.5 572.6,214.3 575.3,215.8 578.1,217.0 580.9,218.1 583.7,218.9 586.5,219.6 589.2,220.1 592.0,220.5 594.8,220.9 597.6,221.1" class="ln tot"/>
+<text x="240.2" y="134.6" class="lab scat-t" text-anchor="middle">scattered</text>
+<text x="524.5" y="81.7" class="lab prim-t">primary</text>
+<text x="484.5" y="12.0" class="lab tot-t" text-anchor="end">total</text>
+</svg>
+    <figcaption>The Tc-99m spectrum the Monte Carlo produces for the phantom below. The photopeak sits on a shoulder of photons that scattered inside the body: 26% of the counts in the photopeak window carry wrong position information.</figcaption>
+  </figure>
+</header>
+
+<section aria-labelledby="pipeline-h">
+  <h2 id="pipeline-h">What it does</h2>
+  <ol class="flow">
+    <li><span class="n">1</span><b>Phantom</b><span>IEC-like body slice: six hot spheres (10–37 mm), lung insert, attenuation map.</span></li>
+    <li><span class="n">2</span><b>Projection</b><span>Analytic system matrix, or Monte Carlo photon transport with Compton and Rayleigh scatter.</span></li>
+    <li><span class="n">3</span><b>Reconstruction</b><span>MLEM / OSEM with attenuation correction and resolution recovery.</span></li>
+    <li><span class="n">4</span><b>Correction</b><span>Triple-energy-window scatter estimate fed into OSEM.</span></li>
+    <li><span class="n">5</span><b>Dosimetry</b><span>Lu-177 time–activity integration and MIRD S-values for spheres.</span></li>
+  </ol>
+  <p class="col">How the work is done matters as much as the code. Before each stage I wrote down what the result had to match and how close it had to be, in <code>DESIGN.md</code>. Later changes go into a dated changelog. Every number on this page is read from the files that the scripts in <code>scripts/</code> write, so it can be reproduced from scratch.</p>
+</section>
+
+<section aria-labelledby="ledger-h">
+  <div class="stage-head col">
+    <p class="eyebrow">Validation ledger</p>
+    <h2 id="ledger-h">What was promised, and what came out</h2>
+    <p>Each row is a target fixed before the code was written. The evidence column names the test or result file that settles it.</p>
+  </div>
+  <div class="table-wrap"><table class="ledger"><thead><tr><th scope="col">Stage</th><th scope="col">Target, written before the code</th><th scope="col">Outcome</th><th scope="col">Evidence</th></tr></thead><tbody><tr><th scope="row">1</th><td>Projector: adjoint identity, count conservation, point-source centroid and width, attenuation vs analytic chord (≤ 1 %)</td><td><span class="st met">Met</span></td><td><code>tests/test_projector.py</code></td></tr><tr><th scope="row">1</th><td>MLEM/OSEM: counts preserved, likelihood never decreases, 1 subset = MLEM, AC restores a uniform disk (≤ 3 %)</td><td><span class="st met">Met</span></td><td><code>tests/test_recon.py</code></td></tr><tr><th scope="row">2</th><td>Narrow-beam μ from simulated transmission within 2 % of NIST XCOM</td><td><span class="st met">Met</span></td><td><code>tests/test_mc.py</code></td></tr><tr><th scope="row">2</th><td>Sampled Compton angles follow Klein–Nishina (χ², 10<sup>6</sup> samples, p &gt; 0.01)</td><td><span class="st met">Met</span></td><td><code>tests/test_mc.py</code></td></tr><tr><th scope="row">2</th><td>Monte Carlo primaries vs analytic projector: totals within 2 %, NRMSE &lt; 5 % (observed 0.05 % and 1.2 %)</td><td><span class="st met">Met</span></td><td><code>tests/test_mc.py</code></td></tr><tr><th scope="row">2</th><td>Uncorrected scatter lowers CRC for every sphere and biases the background upward</td><td><span class="st met">Confirmed</span></td><td><code>results/mc_iec/metrics.json</code></td></tr><tr><th scope="row">3</th><td>Smoothed TEW brings the background bias closer to zero than no correction</td><td><span class="st met">Met</span></td><td><code>results/tew/metrics.json</code></td></tr><tr><th scope="row">3</th><td>Predicted from window totals: TEW over-corrects (negative bias); the lower window alone does better</td><td><span class="st met">Confirmed</span></td><td><code>results/tew/metrics.json</code></td></tr><tr><th scope="row">4</th><td>Lu-177 decay data: spectrum mean vs ENSDF branch mean within 1 % (observed 0.8 %)</td><td><span class="st met">Met</span></td><td><code>results/dosimetry/metrics.json</code></td></tr><tr><th scope="row">4</th><td>Photon absorbed fractions within the EGS4–MCNP spread (floor 5 %) of Stabin &amp; Konijnenberg 2000: 59/112 rows; 37/37 at 100–160 keV</td><td><span class="st part">Partly met</span></td><td><code>results/dosimetry/photon_af_validation.csv</code></td></tr><tr><th scope="row">4</th><td>Small-sphere limit AF → μ<sub>en</sub>·3R/4</td><td><span class="st met">Met</span></td><td><code>tests/test_dosimetry.py</code></td></tr><tr><th scope="row">4</th><td>Straight-line CSDA electron model is a lower bound on the reference (95/95 rows)</td><td><span class="st met">Met</span></td><td><code>results/dosimetry/metrics.json</code></td></tr><tr><th scope="row">4</th><td>Photon point kernel conserves energy and reproduces the direct sphere result (≤ 3 %)</td><td><span class="st met">Met</span></td><td><code>tests/test_dosimetry.py</code></td></tr><tr><th scope="row">4</th><td>Time–activity fits and integrals exact on noise-free data</td><td><span class="st met">Met</span></td><td><code>tests/test_dosimetry.py</code></td></tr></tbody></table></div>
+</section>
+
+<section aria-labelledby="s1-h">
+  <div class="stage-head col">
+    <p class="eyebrow">Stage 1 · forward model and OSEM</p>
+    <h2 id="s1-h">Attenuation and resolution correction</h2>
+    <p>A sparse system matrix models attenuation along each ray and a collimator blur that widens with distance from the detector. OSEM reconstructs the IEC-like slice with and without corrections (12 iterations × 8 subsets, 10<sup>6</sup> counts).</p>
+  </div>
+  <figure><div class="plate"><img src="figures/iec_demo.png" alt="Truth image and three OSEM reconstructions of the IEC-like phantom, with contrast recovery per sphere and a contrast versus noise curve." loading="lazy"></div></figure>
+  <div class="table-wrap"><table class="num"><thead><tr><th scope="col">Reconstruction</th><th scope="col">10 mm</th><th scope="col">13</th><th scope="col">17</th><th scope="col">22</th><th scope="col">28</th><th scope="col">37</th><th scope="col">Bkg CoV</th></tr></thead><tbody><tr><th scope="row">OSEM (no corrections)</th><td>0.13</td><td>0.23</td><td>0.27</td><td>0.23</td><td>0.37</td><td>0.42</td><td>0.39</td></tr><tr><th scope="row">OSEM + AC</th><td>0.43</td><td>0.48</td><td>0.56</td><td>0.56</td><td>0.71</td><td>0.76</td><td>0.32</td></tr><tr><th scope="row">OSEM + AC + RR</th><td>0.45</td><td>0.61</td><td>0.70</td><td>0.71</td><td>0.83</td><td>0.85</td><td>0.16</td></tr></tbody></table></div>
+  <p class="col muted">Contrast recovery coefficient (CRC) per sphere at the last iteration. This is one noise realisation, so read each value as roughly ±0.05. The corrected reconstruction uses the same model that generated the data, which flatters it; Stage 2 removes that.</p>
+</section>
+
+<section aria-labelledby="s2-h">
+  <div class="stage-head col">
+    <p class="eyebrow">Stage 2 · Monte Carlo photon transport</p>
+    <h2 id="s2-h">Simulating the photons instead of the matrix</h2>
+    <p>A photon-tracking Monte Carlo uses NIST XCOM cross-sections, Klein–Nishina Compton scattering, delta tracking through the attenuation map and forced detection with a 10 % energy resolution. It generates projections with 10<sup>6</sup> photons. With scatter switched off, it agrees with the analytic projector to within 0.05 % in total counts.</p>
+  </div>
+  <figure><div class="plate"><img src="figures/mc_iec.png" alt="Detected energy spectrum, sinograms of total and scattered counts, and reconstructions of analytic data, Monte Carlo primaries and Monte Carlo data with scatter." loading="lazy"></div></figure>
+  <div class="table-wrap"><table class="num"><thead><tr><th scope="col">Data</th><th scope="col">10 mm</th><th scope="col">13</th><th scope="col">17</th><th scope="col">22</th><th scope="col">28</th><th scope="col">37</th><th scope="col">Bkg bias</th></tr></thead><tbody><tr><th scope="row">A. analytic data (inverse crime)</th><td>0.35<small>±0.09</small></td><td>0.53<small>±0.05</small></td><td>0.70<small>±0.05</small></td><td>0.76<small>±0.02</small></td><td>0.83<small>±0.02</small></td><td>0.87<small>±0.02</small></td><td>+0.2 %</td></tr><tr><th scope="row">B. MC primaries only</th><td>0.39<small>±0.05</small></td><td>0.60<small>±0.05</small></td><td>0.74<small>±0.05</small></td><td>0.77<small>±0.03</small></td><td>0.83<small>±0.03</small></td><td>0.86<small>±0.02</small></td><td>+0.1 %</td></tr><tr><th scope="row">C. MC with scatter, uncorrected</th><td>0.32<small>±0.06</small></td><td>0.48<small>±0.06</small></td><td>0.60<small>±0.05</small></td><td>0.65<small>±0.04</small></td><td>0.69<small>±0.02</small></td><td>0.75<small>±0.02</small></td><td>+40.8 %</td></tr></tbody></table></div>
+  <div class="two">
+    <p>Using an independent forward model changes almost nothing: rows A and B agree within noise. The reconstructor's physics was right; only the discretisation differed.</p>
+    <p>Scatter is what hurts. Left uncorrected it drops the 37 mm CRC from 0.87 → 0.75 and inflates the background activity by +41 %. Mean ± SD over 10 noise realisations.</p>
+  </div>
+</section>
+
+<section aria-labelledby="s3-h">
+  <div class="stage-head col">
+    <p class="eyebrow">Stage 3 · scatter correction</p>
+    <h2 id="s3-h">Estimating scatter from neighbouring energy windows</h2>
+    <p>The triple-energy-window (TEW) method estimates the scatter under the photopeak from two narrow windows on either side. That estimate enters OSEM as a known additive term. Before running it, I predicted from the window totals that TEW would over-estimate scatter, because primary photons spill into the side windows at this energy resolution.</p>
+  </div>
+  <figure><div class="plate"><img src="figures/tew.png" alt="Reconstructions under five scatter-correction conditions, a scatter profile compared with the truth, background bias bars and contrast recovery curves." loading="lazy"></div></figure>
+  <div class="table-wrap"><table class="num"><thead><tr><th scope="col">Scatter correction</th><th scope="col">Background bias</th><th scope="col">Scatter est. / true</th><th scope="col">CRC 37 mm</th><th scope="col">Bkg CoV</th></tr></thead><tbody><tr><th scope="row">no scatter correction</th><td>+41.1 %<small>±1.5</small></td><td>–</td><td>0.76</td><td>0.14</td></tr><tr><th scope="row">TEW, smoothed</th><td>-4.5 %<small>±1.3</small></td><td>1.14</td><td>0.95</td><td>0.17</td></tr><tr><th scope="row">TEW, unsmoothed</th><td>-3.6 %<small>±1.6</small></td><td>1.14</td><td>0.91</td><td>0.25</td></tr><tr><th scope="row">lower window only, smoothed</th><td>-0.9 %<small>±1.3</small></td><td>1.04</td><td>0.94</td><td>0.16</td></tr><tr><th scope="row">oracle (true scatter)</th><td>+0.6 %<small>±1.4</small></td><td>1.00</td><td>0.85</td><td>0.15</td></tr></tbody></table></div>
+  <div class="two">
+    <p>TEW takes the background bias from +41.1 % to -4.5 %. It over-corrects as predicted: its scatter estimate is 1.14 times the truth. Using the lower window alone gives -0.9 %.</p>
+    <div class="note">
+      <h3>A result that looks too good</h3>
+      <p>TEW reaches a 37 mm CRC of 0.95, above the 0.85 that perfect knowledge of the scatter gives. Noise-free diagnostics trace about half of this to an estimate that is too large and too smooth. The rest appears only with noise and is not explained yet. Judged by contrast alone, over-correction would look like better imaging; the bias against known truth exposes it.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s4-h">
+  <div class="stage-head col">
+    <p class="eyebrow">Stage 4 · Lu-177 dosimetry</p>
+    <h2 id="s4-h">From activity to absorbed dose</h2>
+    <p>Lu-177 decay data come from the ENSDF evaluation (half-life 6.6443 d). Electron absorbed fractions come from Stabin &amp; Konijnenberg (J Nucl Med 2000). Photon absorbed fractions come from a 3D version of the Monte Carlo, checked against the same paper's EGS4 and MCNP tables. A download script fetches every reference table and records where it came from.</p>
+  </div>
+  <figure><div class="plate"><img src="figures/dosimetry.png" alt="Photon absorbed fractions compared with the reference, Lu-177 S-values against sphere mass, a synthetic time-activity curve and the error of integration methods." loading="lazy"></div></figure>
+  <div class="two">
+    <div class="note">
+      <h3>Partly met: photon absorbed fractions</h3>
+      <p>59/112 table rows fall within the references' own EGS4–MCNP spread, including 37/37 at 100–160 keV, where Lu-177's gammas sit. My first model put the sphere in vacuum (60/112); the paper embeds it in an infinite medium, so I corrected the geometry. The remaining gap is at 30–60 keV. Re-running with soft-tissue rather than water cross-sections gives 104/112, which points to composition. Photons are a few percent of the Lu-177 dose, so this moves the S-values by under 0.3 %.</p>
+    </div>
+    <div>
+      <div class="table-wrap"><table class="num"><thead><tr><th scope="col">Sphere</th><th scope="col">S (mGy per MBq·s)</th><th scope="col">Electron AF</th><th scope="col">Photon AF</th><th scope="col">Photon share of S</th></tr></thead><tbody><tr><th scope="row">0.01 g</th><td>2.01</td><td>0.85</td><td>0.009</td><td>0.3 %</td></tr><tr><th scope="row">0.1 g</th><td>0.22</td><td>0.93</td><td>0.016</td><td>0.4 %</td></tr><tr><th scope="row">1 g</th><td>0.0229</td><td>0.96</td><td>0.026</td><td>0.7 %</td></tr><tr><th scope="row">10 g</th><td>2.34&#8239;×&#8239;10<sup>-3</sup></td><td>0.98</td><td>0.045</td><td>1.2 %</td></tr><tr><th scope="row">100 g</th><td>2.38&#8239;×&#8239;10<sup>-4</sup></td><td>0.99</td><td>0.087</td><td>2.3 %</td></tr><tr><th scope="row">1000 g</th><td>2.45&#8239;×&#8239;10<sup>-5</sup></td><td>0.99</td><td>0.184</td><td>4.6 %</td></tr></tbody></table></div>
+    </div>
+  </div>
+  <h3>Integrating a time–activity curve</h3>
+  <p class="col">A synthetic tumour (uptake half-time 2 h, biological washout half-life 120 h) is sampled with 5 % noise, 2000 times. How the samples are integrated matters more than the noise:</p>
+  <div class="table-wrap"><table class="num"><thead><tr><th scope="col">Integration method</th><th scope="col">Samples</th><th scope="col">Mean error</th><th scope="col">SD</th></tr></thead><tbody><tr><th scope="row">trapezoid + physical-decay tail</th><td>4 points</td><td>+25.7 %</td><td>3.6 %</td></tr><tr><th scope="row">trapezoid + fitted tail</th><td>4 points</td><td>+0.9 %</td><td>3.3 %</td></tr><tr><th scope="row">mono-exponential fit</th><td>4 points</td><td>+3.1 %</td><td>3.0 %</td></tr><tr><th scope="row">uptake-washout fit</th><td>4 points</td><td>+0.0 %</td><td>2.8 %</td></tr><tr><th scope="row">trapezoid + physical-decay tail</th><td>3 points</td><td>+18.4 %</td><td>3.5 %</td></tr><tr><th scope="row">trapezoid + fitted tail</th><td>3 points</td><td>-6.3 %</td><td>3.4 %</td></tr><tr><th scope="row">mono-exponential fit</th><td>3 points</td><td>+3.1 %</td><td>3.0 %</td></tr></tbody></table></div>
+</section>
+
+<section aria-labelledby="limits-h">
+  <div class="stage-head col">
+    <h2 id="limits-h">Limits and open questions</h2>
+  </div>
+  <div class="two">
+    <ul class="plain">
+      <li>Imaging is 2D: one slice through a phantom that extends infinitely along the axis, which overstates scatter from out-of-slice activity.</li>
+      <li>Rayleigh scattering uses the Thomson angular distribution with no form factor.</li>
+      <li>The collimator response is the same Gaussian model in simulation and reconstruction; there is no septal penetration.</li>
+      <li>Contrast and noise metrics follow NEMA NU 2 in structure only; they are not a compliant implementation.</li>
+    </ul>
+    <ul class="plain">
+      <li>Dosimetry is at sphere level. Voxel-level dose and a comparison with a published Lu-177 voxel S-value database are not done yet.</li>
+      <li>There is no external check of the Lu-177 S-values themselves, only of their photon and electron ingredients.</li>
+      <li>Unexplained: the noise-only part of TEW's contrast inflation, and the residual 30–40 keV photon gap.</li>
+      <li>Synthetic phantoms only. This is research and teaching code, not a medical device.</li>
+    </ul>
+  </div>
+</section>
+
+<section aria-labelledby="run-h">
+  <div class="stage-head col">
+    <h2 id="run-h">Reproduce it</h2>
+    <p>Python 3.12 with <code>uv</code>. The full test suite runs in about 30 seconds; the four demos take about three minutes together on a laptop.</p>
+  </div>
+<pre>uv sync
+uv run pytest                                  # 106 tests
+uv run python scripts/run_iec_demo.py          # Stage 1
+uv run python scripts/run_mc_demo.py           # Stage 2
+uv run python scripts/run_tew_demo.py          # Stage 3
+uv run python scripts/run_dosimetry_demo.py    # Stage 4
+uv run python scripts/build_site.py            # this page</pre>
+</section>
+
+<footer>
+  <p>Cristhian · MIT licence · reference data from NIST XCOM, ESTAR and X-ray attenuation tables, ENSDF via the IAEA LiveChart API, and Stabin &amp; Konijnenberg, J Nucl Med 2000;41:149–160.</p>
+  <p>Generated by <code>scripts/build_site.py</code> from <code>results/*/metrics.json</code>.</p>
+</footer>
+</main>
+
+</body>
+</html>
