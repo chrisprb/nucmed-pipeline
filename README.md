@@ -1,5 +1,9 @@
 # nucmed-pipeline
 
+**Christian Moyota Bermeo** · School of Mathematics and Physics (SMP), The University of Queensland · School of Medicine, Universidad Internacional del Ecuador (UIDE)
+
+Project page: [chrisprb.github.io/nucmed-pipeline](https://chrisprb.github.io/nucmed-pipeline/) · Source: [github.com/chrisprb/nucmed-pipeline](https://github.com/chrisprb/nucmed-pipeline)
+
 A small nuclear medicine imaging pipeline written from scratch in Python. It goes from emitted photon to reconstructed image to absorbed dose. **Every stage is tested against an analytic or published reference.**
 
 ```
