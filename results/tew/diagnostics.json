@@ -1,0 +1,69 @@
+{
+  "scatter-free data, 12 it": {
+    "bias": 0.0038,
+    "lung": 0.2491,
+    "crc_10": 0.368,
+    "crc_37": 0.864
+  },
+  "oracle, 12 it": {
+    "bias": 0.0036,
+    "lung": 0.2894,
+    "crc_10": 0.322,
+    "crc_37": 0.852
+  },
+  "scatter-free data, 48 it": {
+    "bias": 0.0013,
+    "lung": 0.1507,
+    "crc_10": 0.541,
+    "crc_37": 0.893
+  },
+  "oracle, 48 it": {
+    "bias": 0.0014,
+    "lung": 0.1696,
+    "crc_10": 0.503,
+    "crc_37": 0.889
+  },
+  "TEW (noise-free)": {
+    "bias": -0.0449,
+    "lung": 0.2573,
+    "crc_10": 0.308,
+    "crc_37": 0.905,
+    "est_over_true_total": 1.1386
+  },
+  "TEW rescaled to true total (shape only)": {
+    "bias": 0.0104,
+    "lung": 0.2662,
+    "crc_10": 0.309,
+    "crc_37": 0.879,
+    "est_over_true_total": 1.0
+  },
+  "TEW from scatter counts only (no primary spill)": {
+    "bias": 0.0234,
+    "lung": 0.2504,
+    "crc_10": 0.318,
+    "crc_37": 0.904,
+    "est_over_true_total": 0.9475
+  },
+  "lower-only (noise-free)": {
+    "bias": -0.0084,
+    "lung": 0.2535,
+    "crc_10": 0.313,
+    "crc_37": 0.904,
+    "est_over_true_total": 1.0371
+  },
+  "true scatter, smoothed like TEW": {
+    "bias": 0.0035,
+    "lung": 0.2747,
+    "crc_10": 0.337,
+    "crc_37": 0.88,
+    "est_over_true_total": 0.9997
+  },
+  "shape: TEW/true in top-10% primary bins vs bottom-50%": [
+    1.102,
+    1.191
+  ],
+  "shape: TEW-from-scatter-only/true, same bins": [
+    0.911,
+    0.967
+  ]
+}

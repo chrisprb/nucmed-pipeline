@@ -31,11 +31,11 @@ Build an end-to-end nuclear medicine pipeline (phantom → SPECT forward model �
   - The energy of single-scattered photons matches the Compton formula exactly.
 - Use: generate projections with scatter from a *different* model than the reconstructor, to remove the inverse crime from Stage 1.
 
-### Stage 3: scatter correction (next)
+### Stage 3: scatter correction (done 2026-11-05)
 - Triple-energy-window (TEW) estimate fed into OSEM as the additive term.
 - **Target:** on Monte Carlo data, TEW+AC brings uniform-region bias closer to zero than AC alone, measured against the known activity in the background ROI. Report the remaining bias whatever it is.
 
-### Stage 4: Lu-177 dosimetry
+### Stage 4: Lu-177 dosimetry (next)
 - Fit time–activity curves (mono/bi-exponential), compute cumulated activity, and get organ dose with the MIRD formalism.
 - Voxel-level dose by convolving with a dose point kernel.
 - **Targets:** S-values and dose point kernels reproduce tabulated reference values within the tolerance those references state. The references must be chosen and verified before implementation and recorded here.
@@ -68,3 +68,28 @@ Build an end-to-end nuclear medicine pipeline (phantom → SPECT forward model �
 - **2026-11-05 (before the main Stage 2 run):** A smoke run with 2·10⁴ photons showed that one Poisson realisation makes small-sphere CRC too noisy to judge the ordering. The demo therefore reconstructs **10 noise realisations** per data set (A analytic, B MC primaries, C MC with scatter) and judges the pre-registered expectation on the means. Main run: 10⁶ photons, 10⁶ expected primary counts, seed 20261105. The smoke-run numbers are discarded and not reported.
 - **2026-11-05 (Stage 2 results):** 53 tests pass. All pre-registered Stage 2 targets are met: narrow-beam μ within 2 % of XCOM; KN χ² p > 0.01 at 10⁶ samples; Compton energy exact. Additional checks (a)–(c) also pass; for (c), the MC primary total is within 0.06 % of the analytic projector, with NRMSE 1.2 %. Two bugs were found by tests during development and fixed before the main run. (1) The near-pole branch of the direction rotation fired for |u_z| > 0.99999, treating directions up to about 4.5 mrad off the z-axis as on it. (2) The closed-form KN total cancels catastrophically at k ≲ 10⁻⁴; a series is now used for k < 10⁻³, which does not affect energies ≥ 20 keV. One of my own test assertions was also wrong: forced detection can legitimately score below the tracking cut-off. It was corrected. Main run (`scripts/run_mc_demo.py`, 10⁶ photons, 70 s): photopeak scatter fraction 26.3 %. With 10 realisations, CRC for A (analytic) and B (MC primaries) agree within noise. C (with scatter) is lower for every sphere (37 mm: 0.75 ± 0.02 vs 0.87 ± 0.02) and its background bias is +41 %. **The pre-registered expectation is confirmed.** *Exploratory, not pre-registered:* the lung-insert residual rises from 0.25 to 0.32 of background with scatter.
 - **2026-11-05 (Stage 1 numbers revised):** Updating μ_water from 0.154 to 0.1537 changed the Stage 1 single-realisation CRCs by up to 0.05 (e.g. 37 mm AC+RR 0.88 → 0.85; 10 mm 0.48 → 0.45). This is a different Poisson draw from the same seed, not a physics effect. It shows that Stage 1's table carries roughly ±0.05 of noise. The README now shows the re-run values and says this; Stage 2 onwards reports means over realisations.
+- **2026-11-05 (Stage 3 plan, written before any Stage 3 code):**
+  - *Estimator.* TEW per projection bin is Ŝ = (C_L/W_L + C_U/W_U) · W_P / 2, with W_L = W_U = 3 keV and W_P = 28.1 keV (windows as simulated in Stage 2). Ŝ is used as the known additive term r in OSEM + AC + RR (Stage 1 system matrix), with y ~ Poisson(Ax + r).
+  - *Smoothing (fixed now).* The side windows hold only ~6 % of photopeak counts, so raw Ŝ is very noisy. The primary method smooths Ŝ with a 2D Gaussian, σ = 2 detector bins (0.8 cm) and σ = 2 angular steps (6°), periodic in angle.
+  - *Data.* The Stage 2 Monte Carlo sinograms (`results/mc_iec/projections.npz`) at the Stage 2 calibration (10⁶ expected primary photopeak counts). There are independent Poisson draws per window and 10 realisations, with a seed scheme separate from Stage 2.
+  - *Conditions.*
+    - (0) No scatter correction: the same as Stage 2 condition C, recomputed here.
+    - (1) TEW, smoothed. **This is the primary comparison.**
+    - (2) TEW, unsmoothed.
+    - (3) Lower window only (C_U = 0; the dual-window trapezoid with zero at the upper edge).
+    - (4) Oracle: the noise-free true Monte Carlo scatter as r. This is a reference for the best a perfect additive estimate can do.
+  - *Target (as originally fixed).* |background bias| of (1) < that of (0).
+  - *Quantitative prediction, from the noise-free Stage 2 window totals, before any reconstruction.*
+    - TEW overestimates the total photopeak scatter by ~14 %, because primaries spill into the side windows (9 % of lower-window counts, 94 % of upper-window counts at 10 % FWHM). The lower-window-only estimate is ~4 % high.
+    - So (1) is expected to over-correct, leaving a small *negative* background bias of a few percent, and (3) should be closer to zero.
+    - CRC should rise from (0) towards the oracle (4).
+  - *Additional tests.* The TEW trapezoid is exact for a spectrum that is linear across the windows. OSEM given the exact additive term on noise-free data recovers a uniform disk as well as OSEM on scatter-free data does.
+- **2026-11-05 (Stage 3 results):** 57 tests pass. Main run: `scripts/run_tew_demo.py`, 10 realisations, seed 20261106, about 6 s. No smoke run preceded it.
+  - *Clarification.* Condition (3), lower window only, used the same smoothing as (1). The plan didn't say so explicitly; this was decided before the run.
+  - *Pre-registered target met.* Background bias is +41.1 ± 1.5 % with no correction and −4.5 ± 1.3 % with smoothed TEW.
+  - *Quantitative prediction confirmed.* TEW total / true = 1.139, giving negative bias; lower-only gives 1.038 and bias −0.9 %. The oracle gives +0.6 %.
+  - *Unpredicted, exploratory* (`scripts/diag_tew.py`, noise-free).
+    - TEW's 37 mm CRC (0.95) exceeds the oracle's (0.85). About half the excess is reproduced noise-free and is explained by an estimate that is too large and too smooth: shape-only rescaling gives CRC 0.88; smoothing the true scatter also gives 0.88; TEW/true is 1.19 in low-count bins vs 1.10 in sphere-crossing bins.
+    - The remaining excess appears only with noise and is not explained yet.
+    - The oracle's lung residual (0.29) exceeds scatter-free data (0.25) at 12 iterations. The gap shrinks at 48 iterations (0.17 vs 0.15). This is consistent with slower OSEM convergence in cold regions when a positive additive term is present, but not proven.
+  - *Lesson recorded.* CRC alone rewards over-correction; report bias against truth alongside it.
