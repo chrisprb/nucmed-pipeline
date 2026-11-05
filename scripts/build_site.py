@@ -163,10 +163,9 @@ def build() -> dict[str, str]:
     v["tac_table"] = table(["Integration method", "Samples", "Mean error", "SD"], rows, "num")
 
     # Ledger.
-    yes, part = '<span class="st met">Met</span>', '<span class="st part">Partly met</span>'
-    conf = '<span class="st met">Confirmed</span>'
+    yes, part, conf = "Met", "<i>Partly met</i>", "Confirmed"
     c2, c3 = s2["preregistered_check"], s3["preregistered_check"]
-    st = lambda b, good=yes: good if b else '<span class="st fail">Not met</span>'
+    st = lambda b, good=yes: good if b else "<b>Not met</b>"
     ledger = [
         ["1", "Projector: adjoint identity, count conservation, point-source centroid and width, attenuation vs analytic chord (≤ 1 %)", yes, "tests/test_projector.py"],
         ["1", "MLEM/OSEM: counts preserved, likelihood never decreases, 1 subset = MLEM, AC restores a uniform disk (≤ 3 %)", yes, "tests/test_recon.py"],
@@ -183,9 +182,9 @@ def build() -> dict[str, str]:
         ["4", "Photon point kernel conserves energy and reproduces the direct sphere result (≤ 3 %)", yes, "tests/test_dosimetry.py"],
         ["4", "Time–activity fits and integrals exact on noise-free data", yes, "tests/test_dosimetry.py"],
     ]
-    v["ledger"] = table(["Stage", "Target, written before the code", "Outcome", "Evidence"],
-                        [[a, b, c, f"<code>{d}</code>"] for a, b, c, d in ledger], "ledger")
-    v["n_met"] = str(sum('class="st met"' in r[2] for r in ledger))
+    v["ledger"] = table(["Stage", "Target", "Outcome", "Evidence"],
+                        [[a, b, c, d] for a, b, c, d in ledger], "ledger")
+    v["n_met"] = str(sum(r[2] in (yes, conf) for r in ledger))
     v["n_targets"] = str(len(ledger))
     try:
         out = subprocess.run(["uv", "run", "pytest", "--collect-only", "-q"], cwd=ROOT, capture_output=True, text=True).stdout
@@ -195,21 +194,47 @@ def build() -> dict[str, str]:
     return v
 
 
+AUTHOR = "Christian Moyota Bermeo"
+FONTS = {  # family, weight, style, file (docs/fonts, SIL OFL; see docs/fonts/OFL.txt)
+    "serif-400-normal": ("CMU Serif", 400, "normal", "cmu-serif-500-roman.woff2"),
+    "serif-400-italic": ("CMU Serif", 400, "italic", "cmu-serif-500-italic.woff2"),
+    "serif-700-normal": ("CMU Serif", 700, "normal", "cmu-serif-700-roman.woff2"),
+    "serif-700-italic": ("CMU Serif", 700, "italic", "cmu-serif-700-italic.woff2"),
+    "mono-400-normal": ("CMU Typewriter Text", 400, "normal", "cmu-typewriter-text-500-roman.woff2"),
+}
+
+
+def fontfaces(inline: bool) -> str:
+    import base64
+    out = []
+    for fam, w, st, f in FONTS.values():
+        src = ("data:font/woff2;base64," + base64.b64encode((DOCS / "fonts" / f).read_bytes()).decode()
+               if inline else f"fonts/{f}")
+        out.append(f'@font-face {{ font-family: "{fam}"; font-weight: {w}; font-style: {st}; '
+                   f'font-display: swap; src: url("{src}") format("woff2"); }}')
+    return "\n".join(out)
+
+
 def main() -> None:
+    from datetime import date
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fragment", type=Path, help="also write the page body (no <html> wrapper) here")
+    ap.add_argument("--fragment", type=Path, help="also write a self-contained page body (fonts inlined) here")
     args = ap.parse_args()
     v = build()
-    body = Template((ROOT / "scripts" / "site_template.html").read_text()).substitute(v)
+    v["author"] = AUTHOR
+    v["date"] = f"{date.today():%-d %B %Y}"
+    tpl = Template((ROOT / "scripts" / "site_template.html").read_text())
+    body = tpl.substitute(v, fontfaces=fontfaces(inline=False))
     (DOCS / "figures").mkdir(parents=True, exist_ok=True)
     for stage in ("iec_demo", "mc_iec", "tew", "dosimetry"):
         shutil.copyfile(RES / stage / "figure.png", DOCS / "figures" / f"{stage}.png")
     (DOCS / "index.html").write_text(
         '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-        + body.replace("<!--/head-->", "</head>\n<body>", 1) + "\n</body>\n</html>\n")
+        + body.replace("<!--/head-->", "</head>\n<body>", 1)
+        + "\n</body>\n</html>\n")
     if args.fragment:
-        args.fragment.write_text(body.replace("<!--/head-->", "", 1))
+        args.fragment.write_text(tpl.substitute(v, fontfaces=fontfaces(inline=True)).replace("<!--/head-->", "", 1))
     print(f"wrote {DOCS / 'index.html'} ({v['n_met']}/{v['n_targets']} targets met, {v['n_tests']} tests)")
 
 

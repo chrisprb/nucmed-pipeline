@@ -46,8 +46,10 @@ Build an end-to-end nuclear medicine pipeline (phantom → SPECT forward model �
 - A comparison against an established toolkit (STIR, CASToR or GATE) [verify names and licences before use].
 
 ## References (all [verify] until checked)
-- Shepp LA, Vardi Y. Maximum likelihood reconstruction for emission tomography. IEEE Trans Med Imaging, 1982. [verify]
-- Hudson HM, Larkin RS. Accelerated image reconstruction using ordered subsets of projection data. IEEE Trans Med Imaging, 1994. [verify]
+- Shepp LA, Vardi Y. Maximum likelihood reconstruction for emission tomography. IEEE Trans Med Imaging 1982;1(2):113–122. doi:10.1109/TMI.1982.4307558 (verified via Crossref 2026-11-05).
+- Hudson HM, Larkin RS. Accelerated image reconstruction using ordered subsets of projection data. IEEE Trans Med Imaging 1994;13(4):601–609. doi:10.1109/42.363108 (verified via Crossref 2026-11-05).
+- Ogawa K, Harata Y, Ichihara T, Kubo A, Hashimoto S. A practical method for position-dependent Compton-scatter correction in single photon emission CT. IEEE Trans Med Imaging 1991;10(3):408–412. doi:10.1109/42.97591 (verified via Crossref 2026-11-05).
+- Klein O, Nishina Y. Z Phys 1929;52:853–868. doi:10.1007/BF01366453 (verified via Crossref 2026-11-05).
 - NEMA NU 2: Performance measurements of positron emission tomographs (IEC body phantom, CRC and background variability definitions). [verify edition]
 - Berger MJ, Hubbell JH, Seltzer SM, et al. XCOM: Photon Cross Sections Database, NIST Standard Reference Database 8. https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html (queried 2026-11-05; URL verified, author list [verify] against the database's citation page).
 - CODATA 2022 recommended values (r_e, m_e c²), https://physics.nist.gov/cuu/Constants (checked 2026-11-05).
@@ -126,3 +128,4 @@ Build an end-to-end nuclear medicine pipeline (phantom → SPECT forward model �
     - A units test I had written expected ≥ 99 % electron absorption in 1 kg; the reference itself gives 0.988–0.999, so it now checks 98–100 %.
   - *Lu-177 S-values reported* (0.01 g: 2.01; 10 g: 2.34·10⁻³; 1 kg: 2.45·10⁻⁵ mGy per MBq·s). The low-energy electron assumption moves S by < 0.5 %. The photon share is ≤ 4.6 %, so the T4.2 water-vs-tissue issue affects S by < 0.3 %. No external Lu-177 S-value check was possible (see the Stage 4 plan entry).
   - *TAC example (descriptive, synthetic):* trapezoid + physical tail +26 % / +18 % (4 / 3 points); trapezoid + fitted tail +0.9 % / −6.3 %; mono-exponential fit +3.1 %; uptake–washout fit 0.0 % (SD 2.8 %, 4 points).
+- **2026-11-05 (project page):** `scripts/build_site.py` generates `docs/index.html` (an article-style page) from the result files. References cited on the page were verified via Crossref (DOIs above) or are database URLs. Computer Modern Unicode fonts (SIL OFL, from the `computer-modern@0.1.3` npm package) are in `docs/fonts/` with `OFL.txt`.
